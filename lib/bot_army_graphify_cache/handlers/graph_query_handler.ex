@@ -25,20 +25,17 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
 
     case File.read(cache_file) do
       {:ok, content} ->
-        try do
-          graph = Jason.decode!(content)
+        case Jason.decode(content) do
+          {:ok, graph} ->
+            cached_at = format_mtime(cache_file)
 
-          %{
-            "repo_path" => repo_path,
-            "cached_at" =>
-              File.stat!(cache_file).mtime
-              |> DateTime.from_unix(:millisecond)
-              |> elem(1)
-              |> DateTime.to_iso8601(),
-            "graph" => graph
-          }
-        rescue
-          _ ->
+            %{
+              "repo_path" => repo_path,
+              "cached_at" => cached_at,
+              "graph" => graph
+            }
+
+          {:error, _} ->
             %{"error" => "invalid_graph_format", "repo_path" => repo_path}
         end
 
@@ -47,6 +44,23 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
 
       {:error, reason} ->
         %{"error" => "read_failed", "repo_path" => repo_path, "reason" => inspect(reason)}
+    end
+  end
+
+  defp format_mtime(file_path) do
+    case File.stat(file_path) do
+      {:ok, stat} ->
+        # stat.mtime is an Erlang datetime tuple {{year,month,day},{hour,minute,second}}
+        case stat.mtime do
+          {{year, month, day}, {hour, minute, second}} ->
+            "#{year}-#{String.pad_leading(Integer.to_string(month), 2, "0")}-#{String.pad_leading(Integer.to_string(day), 2, "0")}T#{String.pad_leading(Integer.to_string(hour), 2, "0")}:#{String.pad_leading(Integer.to_string(minute), 2, "0")}:#{String.pad_leading(Integer.to_string(second), 2, "0")}Z"
+
+          _ ->
+            "unknown"
+        end
+
+      {:error, _} ->
+        "unknown"
     end
   end
 end
