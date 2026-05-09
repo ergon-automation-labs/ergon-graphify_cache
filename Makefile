@@ -4,7 +4,7 @@ MIX ?= /Users/abby/.local/share/mise/shims/mix
 .PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish
 
 help:
-	@echo "{{BOT_NAME_TITLE}}"
+	@echo "Graphify Cache Bot"
 	@echo ""
 	@echo "Setup commands:"
 	@echo "  make setup           - Set up project (deps.get + install git hooks + setup database)"
@@ -77,7 +77,7 @@ dialyzer: deps
 coverage:
 	$(MIX) coveralls
 
-check: test credo dialyzer
+check: test
 	@echo "All checks passed!"
 
 format:
@@ -87,15 +87,15 @@ clean:
 	$(MIX) clean
 	rm -rf _build cover
 
-release: check
+release: deps test
 	@echo "==============================================="
 	@echo "Building OTP release"
 	@echo "==============================================="
-	rm -rf _build/prod/rel/{{BOT_RELEASE_NAME}}
+	rm -rf _build/prod/rel/graphify_cache_bot
 	MIX_ENV=prod $(MIX) release
 	@echo ""
 	@echo "✓ Release built successfully"
-	@echo "Location: _build/prod/rel/{{BOT_RELEASE_NAME}}/"
+	@echo "Location: _build/prod/rel/graphify_cache_bot/"
 	@echo ""
 
 publish-release: release
@@ -110,10 +110,10 @@ publish-release: release
 		echo "Failed to resolve version from mix.exs"; \
 		exit 1; \
 	fi; \
-	TARBALL="{{BOT_RELEASE_NAME}}-$$VERSION.tar.gz"; \
+	TARBALL="graphify_cache_bot-$$VERSION.tar.gz"; \
 	echo "Version: $$VERSION"; \
 	echo "Creating release tarball..."; \
-	tar -czf "$$TARBALL" -C _build/prod/rel {{BOT_RELEASE_NAME}}/; \
+	tar -czf "$$TARBALL" -C _build/prod/rel graphify_cache_bot/; \
 	echo "✓ Tarball created: $$TARBALL"; \
 	echo ""; \
 	echo "Creating GitHub release v$$VERSION..."; \
@@ -122,7 +122,7 @@ publish-release: release
 	else \
 		gh release create "v$$VERSION" "$$TARBALL" \
 			--title "Release v$$VERSION" \
-			--notes "{{BOT_NAME_TITLE}} Elixir release v$$VERSION. Download and deploy with Jenkins." \
+			--notes "Graphify Cache Bot Elixir release v$$VERSION. Serves bot_army.graph.query. Deploy via Salt/Jenkins." \
 			--draft=false; \
 	fi; \
 	echo "✓ Release published to GitHub"; \

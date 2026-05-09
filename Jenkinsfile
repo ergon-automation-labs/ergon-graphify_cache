@@ -9,14 +9,13 @@ pipeline {
   }
 
   triggers {
-    // Poll GitHub every 5 minutes for new commits
     pollSCM('H/5 * * * *')
   }
 
   environment {
-    BOT_NAME = '{{BOT_RELEASE_NAME}}'
+    BOT_NAME = 'graphify_cache_bot'
     RELEASE_DIR = "/opt/ergon/releases/${BOT_NAME}"
-    GITHUB_REPO = "ergon-automation-labs/ergon-{{GITHUB_REPO_SUFFIX}}"
+    GITHUB_REPO = "ergon-automation-labs/ergon-graphify_cache"
   }
 
   stages {
@@ -28,7 +27,6 @@ pipeline {
           echo "Checking out repository via SSH"
           echo "==============================================="
 
-          # Set up SSH environment for bot_army user's deploy key
           export HOME=/var/lib/bot_army
           export GIT_SSH_COMMAND="ssh -i /var/lib/bot_army/.ssh/ergon_deploy -F /var/lib/bot_army/.ssh/config -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
 
@@ -46,7 +44,6 @@ pipeline {
           echo "Downloading pre-built release from GitHub"
           echo "==============================================="
 
-          # Get the latest published release (not a draft)
           LATEST_RELEASE=$(gh api repos/${GITHUB_REPO}/releases \
             -q '.[] | select(.draft==false) | .tag_name' | head -1)
 
@@ -57,7 +54,6 @@ pipeline {
 
           echo "Latest release: $LATEST_RELEASE"
 
-          # Download the tarball asset
           echo "Downloading: ${BOT_NAME}-*.tar.gz"
           mkdir -p ./release-artifact
 
@@ -68,7 +64,6 @@ pipeline {
 
           echo "✓ Release downloaded successfully"
 
-          # Extract tarball
           cd ./release-artifact
           TARBALL=$(ls -1 *.tar.gz | head -1)
           echo "Extracting: $TARBALL"
@@ -112,50 +107,18 @@ pipeline {
       }
     }
 
-    stage('Run Migrations') {
-      steps {
-        sh '''
-          echo "==============================================="
-          echo "Running database create + migrations"
-          echo "==============================================="
-
-          RELEASE_BIN="${RELEASE_DIR}/current/{{BOT_RELEASE_NAME}}/bin/{{BOT_RELEASE_NAME}}"
-
-          if [ ! -f "$RELEASE_BIN" ]; then
-            echo "ERROR: Release binary not found at $RELEASE_BIN"
-            exit 1
-          fi
-
-          echo "Running: $RELEASE_BIN eval '{{BOT_APP_NAME_CAMEL}}.Release.create()'"
-          $RELEASE_BIN eval '{{BOT_APP_NAME_CAMEL}}.Release.create()'
-
-          echo "Running: $RELEASE_BIN eval '{{BOT_APP_NAME_CAMEL}}.Release.migrate()'"
-          $RELEASE_BIN eval '{{BOT_APP_NAME_CAMEL}}.Release.migrate()'
-
-          echo "✓ Migrations complete"
-        '''
-      }
-    }
-
   }
 
   post {
     success {
       sh '''
-        # Extract version from the deployed release
-        if [ -f ./release-artifact/{{BOT_APP_NAME}}/releases/start_erl.data ]; then
-          VERSION=$(awk '{print $2}' ./release-artifact/{{BOT_APP_NAME}}/releases/start_erl.data)
+        if [ -f ./release-artifact/graphify_cache_bot/releases/start_erl.data ]; then
+          VERSION=$(awk '{print $2}' ./release-artifact/graphify_cache_bot/releases/start_erl.data)
         fi
-        VERSION=${VERSION:-"{{DEFAULT_VERSION}}"}
-        REPO=${GITHUB_REPO}
-        COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-        RELEASE_TAG=$(gh api repos/${GITHUB_REPO}/releases \
-          -q '.[] | select(.draft==false) | .tag_name' | head -1)
-        RELEASE_TAG=${RELEASE_TAG:-"unknown"}
+        VERSION=${VERSION:-"0.1.1"}
 
-        # Build JSON payload with proper formatting
         PAYLOAD=$(cat <<EOF
-{"bot":"${BOT_NAME}","repo":"${REPO}","node":"air","triggered_by":"jenkins","status":"success","version":"${VERSION}","release_tag":"${RELEASE_TAG}","commit_sha":"${COMMIT_SHA}"}
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"success","version":"${VERSION}"}
 EOF
 )
         echo "📢 Notifying NATS of successful deployment..."
@@ -164,11 +127,8 @@ EOF
     }
     failure {
       sh '''
-        REPO=${GITHUB_REPO}
-        COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-        # Build JSON payload for failure
         PAYLOAD=$(cat <<EOF
-{"bot":"${BOT_NAME}","repo":"${REPO}","node":"air","triggered_by":"jenkins","status":"failed","commit_sha":"${COMMIT_SHA}"}
+{"bot":"${BOT_NAME}","node":"air","triggered_by":"jenkins","status":"failed"}
 EOF
 )
         echo "📢 Notifying NATS of failed deployment..."
