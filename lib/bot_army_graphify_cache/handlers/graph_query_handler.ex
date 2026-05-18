@@ -25,12 +25,13 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
 
   defp load_graph(repo_path) do
     cache_file = Path.join(repo_path, @cache_pattern)
+    cached_at = format_mtime(cache_file)
+    stale = cache_stale?(cache_file)
 
     case File.read(cache_file) do
       {:ok, content} ->
         case Jason.decode(content) do
           {:ok, graph} ->
-            cached_at = format_mtime(cache_file)
             payload_size = byte_size(content)
 
             if payload_size > @max_uncompressed_payload do
@@ -40,6 +41,7 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
               %{
                 "repo_path" => repo_path,
                 "cached_at" => cached_at,
+                "stale" => stale,
                 "graph" => encoded,
                 "encoding" => "gzip+base64",
                 "compressed" => true,
@@ -50,6 +52,7 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
               %{
                 "repo_path" => repo_path,
                 "cached_at" => cached_at,
+                "stale" => stale,
                 "graph" => graph
               }
             end
@@ -63,6 +66,18 @@ defmodule BotArmyGraphifyCache.Handlers.GraphQueryHandler do
 
       {:error, reason} ->
         %{"error" => "read_failed", "repo_path" => repo_path, "reason" => inspect(reason)}
+    end
+  end
+
+  defp cache_stale?(file_path) do
+    case File.stat(file_path) do
+      {:ok, stat} ->
+        now = :calendar.datetime_to_gregorian_seconds(:calendar.universal_time())
+        mtime = :calendar.datetime_to_gregorian_seconds(stat.mtime)
+        now - mtime > 86_400
+
+      {:error, _} ->
+        true
     end
   end
 

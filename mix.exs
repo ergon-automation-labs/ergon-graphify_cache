@@ -4,7 +4,7 @@ defmodule BotArmyGraphifyCache.MixProject do
   def project do
     [
       app: :bot_army_graphify_cache,
-      version: "0.2.0",
+      version: "0.2.3",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -27,7 +27,8 @@ defmodule BotArmyGraphifyCache.MixProject do
     [
       {:bot_army_core, path: "../bot_army_core"},
       {:bot_army_runtime, path: "../bot_army_runtime", override: true},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 end
