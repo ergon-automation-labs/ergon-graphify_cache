@@ -57,7 +57,7 @@ defmodule BotArmyGraphifyCache.Handlers.GraphStatsHandler do
   defp count_modules(graph) do
     graph
     |> Map.keys()
-    |> Enum.count(&is_module_key/1)
+    |> Enum.count(&module_key?/1)
   end
 
   defp count_functions(graph) do
@@ -67,11 +67,11 @@ defmodule BotArmyGraphifyCache.Handlers.GraphStatsHandler do
     |> Enum.sum()
   end
 
-  defp is_module_key(key) when is_binary(key) do
+  defp module_key?(key) when is_binary(key) do
     String.contains?(key, ".")
   end
 
-  defp is_module_key(_), do: false
+  defp module_key?(_), do: false
 
   defp extract_functions(value) when is_map(value) do
     case Map.get(value, "functions") do

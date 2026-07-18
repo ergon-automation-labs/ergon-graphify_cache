@@ -76,9 +76,9 @@ defmodule BotArmyGraphifyCache.NATS.Consumer do
 
   @impl true
   def handle_continue(:connect, state) do
-    case GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    case GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       {:ok, conn} ->
-        BotArmyRuntime.NATS.Connection.subscribe_to_status()
+        BotArmyLibraryRuntime.NATS.Connection.subscribe_to_status()
 
         subjects_to_sub = [
           @query_subject,
@@ -91,7 +91,7 @@ defmodule BotArmyGraphifyCache.NATS.Consumer do
 
         case subscribe_all(conn, self(), subjects_to_sub, []) do
           {:ok, subs} ->
-            BotArmyRuntime.Registry.register("graphify_cache", @subjects, @version)
+            BotArmyLibraryRuntime.Registry.register("graphify_cache", @subjects, @version)
             Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
             Logger.info("[GraphifyCache] Subscribed to graph query subjects")
             Process.send_after(self(), :publish_health, 1_000)
@@ -135,7 +135,7 @@ defmodule BotArmyGraphifyCache.NATS.Consumer do
 
   @impl true
   def handle_info({:msg, msg}, state) do
-    BotArmyRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers, []), fn ->
+    BotArmyLibraryRuntime.Tracing.with_consumer_span(msg.topic, Map.get(msg, :headers, []), fn ->
       try do
         query = Jason.decode!(msg.body)
         Logger.debug("[GraphifyCache] #{msg.topic}: #{inspect(query)}")
@@ -176,8 +176,8 @@ defmodule BotArmyGraphifyCache.NATS.Consumer do
 
   @impl true
   def handle_info(:registry_heartbeat, state) do
-    if length(state.subscriptions) > 0 do
-      BotArmyRuntime.Registry.register("graphify_cache", @subjects, @version)
+    if state.subscriptions != [] do
+      BotArmyLibraryRuntime.Registry.register("graphify_cache", @subjects, @version)
       Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
     end
 
@@ -193,7 +193,7 @@ defmodule BotArmyGraphifyCache.NATS.Consumer do
   end
 
   defp publish_json(payload, subject) do
-    with {:ok, conn} <- GenServer.call(BotArmyRuntime.NATS.Connection, :get_connection, 5_000) do
+    with {:ok, conn} <- GenServer.call(BotArmyLibraryRuntime.NATS.Connection, :get_connection, 5_000) do
       Gnat.pub(conn, subject, Jason.encode!(payload))
     end
   end
