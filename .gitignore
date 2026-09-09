@@ -25,3 +25,8 @@ _build/
 .elixir_ls/
 .push-validated
 .compile-hash
+
+# release artifacts (never commit)
+*.tar.gz
+*.bak
+.cache/

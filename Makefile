@@ -121,12 +121,12 @@ publish-release: release
 	echo ""; \
 	echo "Creating GitHub release v$$VERSION..."; \
 	if gh release view "v$$VERSION" >/dev/null 2>&1; then \
-		gh release upload "v$$VERSION" "$$TARBALL" --clobber; \
+		gh release upload "v$$VERSION" "$$TARBALL" --clobber || { echo "❌ Failed to upload to existing release"; exit 1; }; \
 	else \
 		gh release create "v$$VERSION" "$$TARBALL" \
 			--title "Release v$$VERSION" \
 			--notes "Graphify Cache Bot Elixir release v$$VERSION. Serves bot_army.graph.query. Deploy via Salt/Jenkins." \
-			--draft=false; \
+			--draft=false || { echo "❌ Failed to create release"; exit 1; }; \
 	fi; \
 	echo "✓ Release published to GitHub"; \
 	echo ""; \
