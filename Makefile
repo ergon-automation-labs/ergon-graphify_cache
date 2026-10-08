@@ -120,16 +120,11 @@ publish-release: release
 	else \
 		gh release create "v$$VERSION" "$$TARBALL" \
 			--title "Release v$$VERSION" \
-			--notes "Graphify Cache Bot Elixir release v$$VERSION. Serves bot_army.graph.query. Deploy via Salt/Jenkins." \
+			--notes "Graphify Cache Bot Elixir release v$$VERSION. Serves bot_army.graph.query." \
 			--draft=false || { echo "❌ Failed to create release"; exit 1; }; \
-	fi; \
-	echo "✓ Release published to GitHub"; \
-	echo ""; \
-	echo "Next steps:"; \
-	echo "1. Jenkins will automatically detect the new release"; \
-	echo "2. Trigger deployment in Jenkins UI or wait for auto-deployment"; \
-	echo "3. Check deployment status: make jenkins-logs"
+	fi
 
+	@$(MAKE) publish-deploy-event TARGET=air
 push-and-publish:
 	@git push && $(MAKE) publish-release
 
